@@ -1,0 +1,9 @@
+numpy
+opencv-python
+easyocr
+pillow
+python-dotenv
+google-generativeai
+Flask
+flask-cors
+
