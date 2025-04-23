@@ -1,4 +1,4 @@
-# EZTax-GTBIT
+# EZTax
 **README.md**
 
 ```markdown
