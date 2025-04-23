@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import axios from "axios";
 import SidebarComponent from "../../components/layout/Sidebar";
 import FormattedSummary from "../../components/home/formattedSummary";
+import { IoSend } from "react-icons/io5";
  
 const TaxDashboard = () => {
   const [loading, setLoading] = useState(false);
@@ -32,6 +33,9 @@ const TaxDashboard = () => {
       self_assessment_tax: 0
     }
   });
+
+  const [userMessage, setUserMessage] = useState("");
+  const [chatHistory, setChatHistory] = useState([]);
  
   const handleInputChange = (category, field, value) => {
     setUserData(prev => ({
@@ -49,6 +53,12 @@ const TaxDashboard = () => {
       const response = await axios.post("/api/generate-report", userData);
       setReport(response.data);
       toast.success("Tax report generated successfully");
+      setChatHistory([
+        { 
+          sender: "bot", 
+          text: "Your tax report is ready! Ask me any questions about your tax calculations or recommendations for tax optimization." 
+        }
+      ]);
     } catch (error) {
       console.error("Error generating report:", error);
       toast.error("Failed to generate tax report");
@@ -56,7 +66,43 @@ const TaxDashboard = () => {
       setLoading(false);
     }
   };
- 
+  
+  const sendMessage = async () => {
+    if (!userMessage.trim()) return;
+
+    const newHistory = [...chatHistory, { sender: "user", text: userMessage }];
+    setChatHistory(newHistory);
+
+    try {
+      // Include the tax report data in the API call to provide context
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ 
+          message: userMessage,
+          taxData: report ? report : null,
+          userData: userData
+        }),
+      });
+
+      const data = await res.json();
+      setChatHistory((prev) => [
+        ...prev,
+        { sender: "bot", text: data.answer || "Sorry, I couldn't understand." },
+      ]);
+    } catch (err) {
+      console.error("Frontend error:", err);
+      setChatHistory((prev) => [
+        ...prev,
+        { sender: "bot", text: "There was an error. Please try again." },
+      ]);
+    }
+
+    setUserMessage("");
+  };
+
   return (
     <div className="flex min-h-screen bg-gray-100">
       <SidebarComponent />
@@ -293,7 +339,47 @@ const TaxDashboard = () => {
                     )}
                   </div>
                 </div>
- 
+                <div className="mt-8 border-t pt-6">
+                  <h3 className="font-medium text-lg mb-3">Ask Tax Bot</h3>
+                  
+                  {/* Chat History */}
+                  <div className="bg-gray-50 p-4 rounded-lg mb-4 max-h-60 overflow-y-auto">
+                    {chatHistory.map((msg, i) => (
+                      <div
+                        key={i}
+                        className={`mb-3 ${
+                          msg.sender === "user" ? "text-right" : "text-left"
+                        }`}
+                      >
+                        <div 
+                          className={`inline-block px-3 py-2 rounded-lg max-w-[80%] text-sm ${
+                            msg.sender === "user" 
+                              ? "bg-blue-100 text-blue-800" 
+                              : "bg-white border border-gray-200 text-gray-800"
+                          }`}
+                        >
+                          {msg.text}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {/* Input Area */}
+                  <div className="flex gap-2">
+                    <input
+                      value={userMessage}
+                      onChange={(e) => setUserMessage(e.target.value)}
+                      className="flex-1 border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Ask about your tax report..."
+                    />
+                    <button
+                      onClick={sendMessage}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
+                    >
+                      <IoSend />
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
             
